@@ -2,25 +2,16 @@ package queue
 
 import (
 	"bufio"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
-	"flag"
 	"fmt"
-	"github.com/Shopify/sarama"
+	"github.com/sotomskir/mastermind-server/controllers"
 	"github.com/sotomskir/mastermind-server/models"
+	"github.com/sotomskir/mastermind-server/utils"
 	"github.com/streadway/amqp"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-)
-
-var (
-	certFile  = flag.String("certificate", "", "The optional certificate file for client authentication")
-	keyFile   = flag.String("key", "", "The optional key file for client authentication")
-	caFile    = flag.String("ca", "", "The optional certificate authority file for TLS client authentication")
-	verifySsl = flag.Bool("verify", false, "Optional verify ssl certificates chain")
+	"time"
 )
 
 func handleError(err error, message string) {
@@ -92,17 +83,14 @@ var ConnectQueue = func() {
 				rejectMessage(d)
 				return
 			}
-			deployment.Status = models.StatusProcessing
-			err = models.UpdateDeploymentStatus(deployment)
+			err = models.UpdateDeploymentStatus(deployment, map[string]interface{}{"started_at": time.Now(), "status": models.StatusProcessing})
 			sendStatusMessage(ch, deploymentStatusExchangeName, deployment.ID, deployment.Status)
 			if err != nil {
-				log.Printf("Error saving deployment status: %s", err)
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Error saving deployment status: %s", err)})
 				rejectMessage(d)
 				return
 			}
 
-			//dataCollector := newDataCollector(strings.Split(os.Getenv("KAFKA_PEERS"), ","))
-			//defer dataCollector.Close()
 			logExchangeName := fmt.Sprintf("deployment_log_%d", deployment.ID)
 			err = ch.ExchangeDeclare(
 				logExchangeName,
@@ -114,48 +102,51 @@ var ConnectQueue = func() {
 				nil,
 			)
 			if err != nil {
-				log.Printf("Error creating amqp exchange")
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Error creating amqp exchange")})
 				return
 			}
 
-			//sendLogMessage(dataCollector, fmt.Sprintf("deployment_log_%d", deployment.ID), fmt.Sprintf("log %d\n", i))
-
-			//time.Sleep(5 * time.Second)
-			cmd := exec.Command("ansible-playbook", "-i", deployment.Inventory.SourceFile, deployment.Application.AnsiblePlaybook)
-			cmd.Dir = fmt.Sprintf("/home/sotomski/go/src/github.com/sotomskir/mastermind-server/storage/repositories/%s", deployment.Application.Project.Name)
+			if err := controllers.SynchronizeProjectRepo(deployment.Application.ProjectID); err != nil {
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Cannot synchronize project: %s", err)})
+			}
+			if err := utils.WriteKey(deployment.Inventory.Key.ID, deployment.Inventory.Key.Key); err != nil {
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Cannot write key: %s", err)})
+			}
+			keyPath := fmt.Sprintf("storage/keys/%d", deployment.Inventory.Key.ID)
+			version := fmt.Sprintf("version=%s", deployment.Version)
+			app := fmt.Sprintf("app=%s", deployment.Application.AnsibleName)
+			cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", deployment.Inventory.SourceFile, "-e", app, "-e", version, deployment.Application.AnsiblePlaybook)
+			cmd.Dir = fmt.Sprintf("storage/repositories/%s", deployment.Application.Project.Name)
+			cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
 			cmdOutReader, err := cmd.StdoutPipe()
 			if err != nil {
-				log.Printf("Cannot get stdout pipe: %s", err)
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Cannot get stdout pipe: %s", err)})
 			}
 			outScanner := bufio.NewScanner(cmdOutReader)
 			go func(ch *amqp.Channel, exchangeName string) {
 				for outScanner.Scan() {
-					if err := models.SaveDeploymentLog(&models.DeploymentLog{Deployment:*deployment, Message:outScanner.Text()}); err != nil {
-						log.Printf("Cannot save log: %s", err)
-					}
+					models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: outScanner.Text()})
 					sendLogMessage(ch, exchangeName, outScanner.Text())
 					fmt.Println(outScanner.Text())
 				}
 			}(ch, logExchangeName)
 			cmdErrReader, err := cmd.StderrPipe()
 			if err != nil {
-				log.Printf("Cannot get stderr pipe: %s", err)
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Cannot get stderr pipe: %s", err)})
 			}
 			errScanner := bufio.NewScanner(cmdErrReader)
 			go func(ch *amqp.Channel, exchangeName string) {
 				for errScanner.Scan() {
-					if err := models.SaveDeploymentLog(&models.DeploymentLog{Deployment:*deployment, Message:errScanner.Text()}); err != nil {
-						log.Printf("Cannot save log: %s", err)
-					}
+					models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: errScanner.Text()})
 					sendLogMessage(ch, exchangeName, errScanner.Text())
 					fmt.Println(errScanner.Text())
 				}
 			}(ch, logExchangeName)
 			if err := cmd.Start(); err != nil {
-				log.Printf("Cannot start command: %s", err)
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Cannot start command: %s", err)})
 			}
 			if err := cmd.Wait(); err != nil {
-				log.Printf("Error waiting for process: %s", err)
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Error waiting for process: %s", err)})
 			}
 
 			if cmd.ProcessState.ExitCode() != 0 {
@@ -164,9 +155,9 @@ var ConnectQueue = func() {
 				deployment.Status = models.StatusCompleted
 			}
 
-			err = models.UpdateDeploymentStatus(deployment)
+			err = models.UpdateDeploymentStatus(deployment, map[string]interface{}{"finished_at": time.Now(), "status": deployment.Status})
 			if err != nil {
-				log.Printf("Error saving deployment status: %s", err)
+				models.SaveDeploymentLog(&models.DeploymentLog{Deployment: *deployment, Message: fmt.Sprintf("Error saving deployment status: %s", err)})
 				rejectMessage(d)
 				return
 			}
@@ -230,68 +221,4 @@ func sendLogMessage(ch *amqp.Channel, exchangeName string, message string) {
 	if err != nil {
 		log.Printf("Error sending status message: %s", err)
 	}
-}
-
-func sendLogMessage1(producer sarama.SyncProducer, topic string, message string) {
-	_, _, err := producer.SendMessage(&sarama.ProducerMessage{
-		Topic: topic,
-		Value: sarama.StringEncoder(message),
-	})
-	if err != nil {
-		log.Printf("Error sending log message: %s", err)
-	}
-}
-
-func newDataCollector(brokerList []string) sarama.SyncProducer {
-	//sarama.Logger = log.New(os.Stdout, "sarma", 0)
-	// For the data collector, we are looking for strong consistency semantics.
-	// Because we don't change the flush settings, sarama will try to produce messages
-	// as fast as possible to keep latency low.
-	config := sarama.NewConfig()
-	config.Producer.RequiredAcks = sarama.WaitForAll // Wait for all in-sync replicas to ack the message
-	config.Producer.Retry.Max = 10                   // Retry up to 10 times to produce the message
-	config.Producer.Return.Successes = true
-	tlsConfig := createTlsConfiguration()
-	if tlsConfig != nil {
-		config.Net.TLS.Config = tlsConfig
-		config.Net.TLS.Enable = true
-	}
-
-	// On the broker side, you may want to change the following settings to get
-	// stronger consistency guarantees:
-	// - For your broker, set `unclean.leader.election.enable` to false
-	// - For the topic, you could increase `min.insync.replicas`.
-	fmt.Println("brokerList")
-	fmt.Println(brokerList)
-	producer, err := sarama.NewSyncProducer(brokerList, config)
-	if err != nil {
-		log.Fatalln("Failed to start Sarama producer:", err)
-	}
-
-	return producer
-}
-
-func createTlsConfiguration() (t *tls.Config) {
-	if *certFile != "" && *keyFile != "" && *caFile != "" {
-		cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		caCert, err := ioutil.ReadFile(*caFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		t = &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			RootCAs:            caCertPool,
-			InsecureSkipVerify: *verifySsl,
-		}
-	}
-	// will be nil by default if nothing is provided
-	return t
 }
