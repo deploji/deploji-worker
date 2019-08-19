@@ -9,4 +9,5 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /go/bin/mastermind-worker .
 COPY .env .
+VOLUME /root/storage
 CMD ["./mastermind-worker"]
