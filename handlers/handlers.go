@@ -12,6 +12,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -33,6 +34,8 @@ func ProcessJobMessage(message *dto.Message) {
 		done()
 	}()
 	switch job.Type {
+	case models.TypeJob:
+		processJob(job.ID, jobLogs)
 	case models.TypeDeployment:
 		processDeployment(job.ID, jobLogs)
 	case models.TypeSCMPull:
@@ -89,11 +92,66 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
 	}
 
-	keyPath := fmt.Sprintf("storage/keys/%d", job.Inventory.Key.ID)
+	keyPath := fmt.Sprintf("../../keys/%d", job.Inventory.Key.ID)
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, job.Application.AnsiblePlaybook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%s", job.Application.Project.Name)
+	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
+	processPipes(cmd, jobLogs, job)
+
+	if err := cmd.Start(); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot start command: %s", err))
+	}
+	if err := cmd.Wait(); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Error waiting for process: %s", err))
+	}
+
+	job.Status = models.StatusCompleted
+	if cmd.ProcessState.ExitCode() != 0 {
+		job.Status = models.StatusFailed
+	}
+
+	if err := updateJobStatus(job, job.Status); err != nil {
+		log.Printf("Cannot update job status: %s", err)
+		return
+	}
+}
+
+func processJob(jobID uint, jobLogs chan dto.Message) {
+	job := models.GetJob(jobID)
+	if job == nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Deployment with ID: %d not found", jobID))
+		return
+	}
+	if err := updateJobStatus(job, models.StatusProcessing); err != nil {
+		return
+	}
+	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
+	}
+	if err := utils.WriteKey(job.Inventory.Key.ID, job.Inventory.Key.Key); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
+	}
+
+	keyPath := fmt.Sprintf("../../keys/%d", job.Inventory.Key.ID)
+	extraVarsFile, err := ioutil.TempFile("/tmp/", "extraVars")
+	if err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
+	}
+	//defer os.Remove(extraVarsFile.Name())
+	_, err = extraVarsFile.WriteString(job.ExtraVariables)
+	if err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
+	}
+	fmt.Printf("job.ExtraVariables %s", job.ExtraVariables)
+	fmt.Printf("job.Playboook %s", job.Playbook)
+	fmt.Printf("job.extraVarsFile.Name() %s", extraVarsFile.Name())
+	fmt.Printf("job.job.Inventory.SourceFile %s", job.Inventory.SourceFile)
+	fmt.Printf("job.keyPath %s", keyPath)
+	fmt.Printf("job.Project.Name %s", job.Project.Name)
+	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", extraVarsFile.Name(), job.Playbook)
+	cmd.Dir = fmt.Sprintf("storage/repositories/%s", job.Project.Name)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
 	processPipes(cmd, jobLogs, job)
 
