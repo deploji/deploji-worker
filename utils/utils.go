@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/sotomskir/mastermind-server/dto"
 	"io/ioutil"
 	"log"
 	"os"
@@ -22,5 +23,27 @@ func WriteKey(id uint, content string) error {
 		log.Printf("Error saving key file: %s", err)
 		return err
 	}
+	return nil
+}
+
+type chanWriter struct {
+	ch chan dto.Message
+}
+
+func NewChanWriter(ch chan dto.Message) *chanWriter {
+	return &chanWriter{ch}
+}
+
+func (w *chanWriter) Chan() <-chan dto.Message {
+	return w.ch
+}
+
+func (w *chanWriter) Write(p []byte) (int, error) {
+	w.ch <-p
+	return len(p), nil
+}
+
+func (w *chanWriter) Close() error {
+	close(w.ch)
 	return nil
 }

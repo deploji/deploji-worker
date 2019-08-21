@@ -248,6 +248,8 @@ github.com/sotomskir/mastermind-server v0.0.0-20190820200334-aaaa475dc404 h1:TEN
 github.com/sotomskir/mastermind-server v0.0.0-20190820200334-aaaa475dc404/go.mod h1:5zUnaACvhJ2AogE8YaTXx/zzzf2Eiy2X+7qf1ROR5Ew=
 github.com/sotomskir/mastermind-server v0.0.0-20190820202352-ce1a45990664 h1:KQD5It+MxndpR8wqJ1N5MK4ZGSXnFoz+ih18a3QM1qQ=
 github.com/sotomskir/mastermind-server v0.0.0-20190820202352-ce1a45990664/go.mod h1:5zUnaACvhJ2AogE8YaTXx/zzzf2Eiy2X+7qf1ROR5Ew=
+github.com/sotomskir/mastermind-server v0.0.0-20190821211138-76ca0a87c723 h1:C+E88K23qsYIfy2mzicuuCX8Ii3TQTRPUWxNKDX4W30=
+github.com/sotomskir/mastermind-server v0.0.0-20190821211138-76ca0a87c723/go.mod h1:5zUnaACvhJ2AogE8YaTXx/zzzf2Eiy2X+7qf1ROR5Ew=
 github.com/src-d/gcfg v1.4.0 h1:xXbNR5AlLSA315x2UO+fTSSAXCDf+Ar38/6oyGbDKQ4=
 github.com/src-d/gcfg v1.4.0/go.mod h1:p/UMsR43ujA89BJY9duynAwIpvqEujIH/jFlfL7jWoI=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94 h1:0ngsPmuP6XIjiFRNFYlvKwSr5zff2v+uPHaffZ6/M4k=
