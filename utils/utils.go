@@ -15,7 +15,7 @@ func HandleError(err error, message string) {
 }
 
 func WriteKey(id uint, content string) error {
-	if err := os.MkdirAll("storage/keys", os.ModePerm); err != nil {
+	if err := os.MkdirAll("storage/keys", 0700); err != nil {
 		log.Printf("Error creating directory: %s", err)
 		return err
 	}

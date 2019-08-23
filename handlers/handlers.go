@@ -247,6 +247,7 @@ func synchronizeProjectRepo(job *models.Job, jobLogs chan dto.Message) error {
 		return err
 	}
 
+	saveJobLog(jobLogs, job, "git tree")
 	wTree, err := repo.Worktree()
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("git tree: %s", err))
