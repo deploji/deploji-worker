@@ -104,12 +104,10 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	if err := cmd.Start(); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot start command: %s", err))
 	}
-	if err := cmd.Wait(); err != nil {
-		saveJobLog(jobLogs, job, fmt.Sprintf("Error waiting for process: %s", err))
-	}
 
 	job.Status = models.StatusCompleted
-	if cmd.ProcessState.ExitCode() != 0 {
+	if err := cmd.Wait(); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Error waiting for process: %s", err))
 		job.Status = models.StatusFailed
 	}
 
@@ -159,12 +157,10 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	if err := cmd.Start(); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot start command: %s", err))
 	}
-	if err := cmd.Wait(); err != nil {
-		saveJobLog(jobLogs, job, fmt.Sprintf("Error waiting for process: %s", err))
-	}
 
 	job.Status = models.StatusCompleted
-	if cmd.ProcessState.ExitCode() != 0 {
+	if err := cmd.Wait(); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Error waiting for process: %s", err))
 		job.Status = models.StatusFailed
 	}
 
