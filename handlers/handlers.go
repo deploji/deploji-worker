@@ -151,7 +151,7 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	fmt.Printf("job.job.Inventory.SourceFile %s", job.Inventory.SourceFile)
 	fmt.Printf("job.keyPath %s", keyPath)
 	fmt.Printf("job.Project.Name %s", job.Project.Name)
-	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", extraVarsFile.Name(), job.Playbook)
+	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%s", job.Project.Name)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
 	processPipes(cmd, jobLogs, job)
