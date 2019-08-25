@@ -69,10 +69,12 @@ func processSCMPull(jobID uint, jobLogs chan dto.Message) {
 	if err := updateJobStatus(job, models.StatusProcessing); err != nil {
 		return
 	}
+	job.Status = models.StatusCompleted
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
+		job.Status = models.StatusFailed
 	}
-	if err := updateJobStatus(job, models.StatusCompleted); err != nil {
+	if err := updateJobStatus(job, job.Status); err != nil {
 		return
 	}
 }
@@ -89,15 +91,16 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
 	}
-	if err := utils.WriteKey(job.Inventory.Key.ID, job.Inventory.Key.Key); err != nil {
+	if err := utils.WriteKey(job.Key.ID, job.Key.Key); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
 	}
 
-	keyPath := fmt.Sprintf("../../keys/%d", job.Inventory.Key.ID)
+	keyPath := fmt.Sprintf("../../keys/%d", job.Key.ID)
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
+	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, job.Application.AnsiblePlaybook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, job.Application.AnsiblePlaybook)
-	cmd.Dir = fmt.Sprintf("storage/repositories/%s", job.Application.Project.Name)
+	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Application.Project.ID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
 	processPipes(cmd, jobLogs, job)
 
@@ -129,16 +132,16 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
 	}
-	if err := utils.WriteKey(job.Inventory.Key.ID, job.Inventory.Key.Key); err != nil {
+	if err := utils.WriteKey(job.Key.ID, job.Key.Key); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
 	}
 
-	keyPath := fmt.Sprintf("../../keys/%d", job.Inventory.Key.ID)
+	keyPath := fmt.Sprintf("../../keys/%d", job.Key.ID)
 	extraVarsFile, err := ioutil.TempFile("/tmp/", "extraVars")
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
-	//defer os.Remove(extraVarsFile.Name())
+	defer os.Remove(extraVarsFile.Name())
 	_, err = extraVarsFile.WriteString(job.ExtraVariables)
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
@@ -149,8 +152,9 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	fmt.Printf("job.job.Inventory.SourceFile %s", job.Inventory.SourceFile)
 	fmt.Printf("job.keyPath %s", keyPath)
 	fmt.Printf("job.Project.Name %s", job.Project.Name)
+	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook)
-	cmd.Dir = fmt.Sprintf("storage/repositories/%s", job.Project.Name)
+	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Project.ID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
 	processPipes(cmd, jobLogs, job)
 
@@ -218,7 +222,7 @@ func synchronizeProjectRepo(job *models.Job, jobLogs chan dto.Message) error {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Project not found"))
 		return fmt.Errorf("not found")
 	}
-	path := fmt.Sprintf("./storage/repositories/%s", project.Name)
+	path := fmt.Sprintf("./storage/repositories/%d", project.ID)
 	var repo *git.Repository
 	var err error
 
@@ -229,7 +233,6 @@ func synchronizeProjectRepo(job *models.Job, jobLogs chan dto.Message) error {
 	}
 
 	keys, err := getKey(project, jobLogs, job)
-	fmt.Printf("PROJECT %#v\n", keys)
 	if err != nil {
 		return err
 	}
@@ -299,7 +302,7 @@ func fetch(jobLogs chan dto.Message, job *models.Job, path string, project *mode
 		saveJobLog(jobLogs, job, fmt.Sprintf("git open: %s", err))
 		return nil, err
 	}
-	saveJobLog(jobLogs, job, "git fetch")
+	saveJobLog(jobLogs, job, fmt.Sprintf("git fetch %s", project.RepoUrl))
 	if project.SshKeyID != 0 {
 		err = repo.Fetch(&git.FetchOptions{
 			Progress:   utils.NewChanWriter(jobLogs),
@@ -320,17 +323,17 @@ func fetch(jobLogs chan dto.Message, job *models.Job, path string, project *mode
 }
 
 func clone(project *models.Project, jobLogs chan dto.Message, keys *ssh.PublicKeys, job *models.Job) (*git.Repository, error) {
-	saveJobLog(jobLogs, job, "git clone")
+	saveJobLog(jobLogs, job, fmt.Sprintf("git clone %s", project.RepoUrl))
 	var repo *git.Repository
 	var err error
 	if project.SshKeyID != 0 {
-		repo, err = git.PlainClone(fmt.Sprintf("./storage/repositories/%s", project.Name), false, &git.CloneOptions{
+		repo, err = git.PlainClone(fmt.Sprintf("./storage/repositories/%d", project.ID), false, &git.CloneOptions{
 			URL:      project.RepoUrl,
 			Progress: utils.NewChanWriter(jobLogs),
 			Auth:     keys,
 		})
 	} else {
-		repo, err = git.PlainClone(fmt.Sprintf("./storage/repositories/%s", project.Name), false, &git.CloneOptions{
+		repo, err = git.PlainClone(fmt.Sprintf("./storage/repositories/%d", project.ID), false, &git.CloneOptions{
 			URL:      project.RepoUrl,
 			Progress: utils.NewChanWriter(jobLogs),
 		})
