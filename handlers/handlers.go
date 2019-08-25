@@ -91,7 +91,7 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
 	}
-	if err := utils.WriteKey(job.Key.ID, job.Key.Key); err != nil {
+	if err := utils.WriteKey(job.Key.ID, string(job.Key.Key)); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
 	}
 
@@ -132,7 +132,7 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
 	}
-	if err := utils.WriteKey(job.Key.ID, job.Key.Key); err != nil {
+	if err := utils.WriteKey(job.Key.ID, string(job.Key.Key)); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
 	}
 

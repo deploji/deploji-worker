@@ -10,12 +10,12 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.6.1 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/joho/godotenv v1.3.0
-	github.com/sotomskir/mastermind-server v0.0.0-20190823152915-4fc4a02fe2c4
+	github.com/sotomskir/mastermind-server v0.0.0-20190825193830-51f14e4e39fb
 	github.com/streadway/amqp v0.0.0-20190815230801-eade30b20f1d
 	github.com/stretchr/testify v1.4.0 // indirect
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
-	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
+	golang.org/x/sys v0.0.0-20190825160603-fb81701db80f // indirect
 	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
 	google.golang.org/grpc v1.23.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
