@@ -94,11 +94,20 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	if err := utils.WriteKey(job.Key.ID, string(job.Key.Key)); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
 	}
+	extraVarsFile, err := ioutil.TempFile("/tmp/", "extraVars")
+	if err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
+	}
+	defer os.Remove(extraVarsFile.Name())
+	_, err = extraVarsFile.WriteString(job.ExtraVariables)
+	if err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
+	}
 
 	keyPath := fmt.Sprintf("../../keys/%d", job.Key.ID)
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
-	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, job.Application.AnsiblePlaybook))
+	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Application.AnsiblePlaybook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, job.Application.AnsiblePlaybook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Application.Project.ID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
@@ -146,12 +155,7 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
-	fmt.Printf("job.ExtraVariables %s", job.ExtraVariables)
-	fmt.Printf("job.Playboook %s", job.Playbook)
-	fmt.Printf("job.extraVarsFile.Name() %s", extraVarsFile.Name())
-	fmt.Printf("job.job.Inventory.SourceFile %s", job.Inventory.SourceFile)
-	fmt.Printf("job.keyPath %s", keyPath)
-	fmt.Printf("job.Project.Name %s", job.Project.Name)
+
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Project.ID)
