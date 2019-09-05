@@ -211,7 +211,17 @@ func saveJobLog(jobLogs chan dto.Message, job *models.Job, message string) {
 }
 
 func updateJobStatus(job *models.Job, status models.Status) error {
-	err := models.UpdateJobStatus(job, map[string]interface{}{"started_at": time.Now(), "status": status})
+	updates := make(map[string]interface{})
+	updates["status"] = status
+	switch status {
+	case models.StatusProcessing:
+		updates["started_at"] = time.Now()
+	case models.StatusCompleted:
+		updates["finished_at"] = time.Now()
+	case models.StatusFailed:
+		updates["finished_at"] = time.Now()
+	}
+	err := models.UpdateJobStatus(job, updates)
 	if err != nil {
 		log.Printf("Failed to update job status: %s", err)
 		return err
