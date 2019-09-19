@@ -108,7 +108,7 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Application.AnsiblePlaybook))
-	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, job.Application.AnsiblePlaybook)
+	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Application.AnsiblePlaybook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Application.Project.ID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
 	processPipes(cmd, jobLogs, job)
