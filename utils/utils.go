@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"github.com/sotomskir/mastermind-server/dto"
+	"github.com/deploji/deploji-server/dto"
 	"io/ioutil"
 	"log"
 	"os"

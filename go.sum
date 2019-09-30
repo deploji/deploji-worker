@@ -12,6 +12,7 @@ github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 h1:w+iIsaOQNcT7O
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
+github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.13/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/Microsoft/go-winio v0.4.14 h1:+hMXMk01us9KgxGb7ftKQt2Xpf5hH/yky+TDA+qxleU=
@@ -36,6 +37,9 @@ github.com/biezhi/gorm-paginator/pagination v0.0.0-20190124091837-7a5c8ed20334 h
 github.com/biezhi/gorm-paginator/pagination v0.0.0-20190124091837-7a5c8ed20334/go.mod h1:Y/N4aF7p+Med/9ivVSsGBc8xOs8BGptUVBCY3k4KFCY=
 github.com/bitly/go-hostpool v0.0.0-20171023180738-a3a6125de932/go.mod h1:NOuUCSz6Q9T7+igc/hlvDOUdtWKryOrtFyIVABv/p7k=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
+github.com/casbin/casbin/v2 v2.0.0/go.mod h1:YcPU1XXisHhLzuxH9coDNf2FbKpjGlbCg3n9yuLkIJQ=
+github.com/casbin/casbin/v2 v2.0.2/go.mod h1:YcPU1XXisHhLzuxH9coDNf2FbKpjGlbCg3n9yuLkIJQ=
+github.com/casbin/gorm-adapter/v2 v2.0.3/go.mod h1:pnulk7RNHbFsldTBruui8jqUhq91sLHtub8LJCJSZg8=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cockroachdb/apd v1.1.0/go.mod h1:8Sl8LxpKi29FqWXR16WEFZRNSz3SoPzUzeMeY4+DwBQ=
 github.com/cockroachdb/cockroach-go v0.0.0-20181001143604-e0a95dfd547c/go.mod h1:XGLbWH/ujMcbPbhZq52Nv6UrCghb1yGn//133kEsvDk=
@@ -69,6 +73,8 @@ github.com/denisenkom/go-mssqldb v0.0.0-20190515213511-eb9f6a1743f3/go.mod h1:zA
 github.com/denisenkom/go-mssqldb v0.0.0-20190724012636-11b2859924c1/go.mod h1:uU0N10vx1abI4qeVe79CxepBP6PPREVTgMS5Gx6/mOk=
 github.com/denisenkom/go-mssqldb v0.0.0-20190820223206-44cdfe8d8ba9 h1:r05vdZzhwcLFTrNCNirAQEL30b/tlqnI0ow7BCcUiT4=
 github.com/denisenkom/go-mssqldb v0.0.0-20190820223206-44cdfe8d8ba9/go.mod h1:uU0N10vx1abI4qeVe79CxepBP6PPREVTgMS5Gx6/mOk=
+github.com/deploji/deploji-server v0.0.0-20190930194947-73a1f4f7cb7a h1:pTvhGKsLjBlg3VARbNsRZa17wP7qX1LDfW644NKj9cY=
+github.com/deploji/deploji-server v0.0.0-20190930194947-73a1f4f7cb7a/go.mod h1:rMjfTE3/zYhBr+fOZB6shptcjP152RgOf+Cswq7DvaU=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dhui/dktest v0.3.0/go.mod h1:cyzIUfGsBEbZ6BT7tnXqAShHSXCZhSNmFl70sZ7c1yc=
@@ -252,8 +258,6 @@ github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPx
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
-github.com/sotomskir/mastermind-server v0.0.0-20190825193830-51f14e4e39fb h1:4n6ZsfNDPARP6+wTgfGr4l9P9DJF1dPvYCLU8runv24=
-github.com/sotomskir/mastermind-server v0.0.0-20190825193830-51f14e4e39fb/go.mod h1:5zUnaACvhJ2AogE8YaTXx/zzzf2Eiy2X+7qf1ROR5Ew=
 github.com/src-d/gcfg v1.4.0 h1:xXbNR5AlLSA315x2UO+fTSSAXCDf+Ar38/6oyGbDKQ4=
 github.com/src-d/gcfg v1.4.0/go.mod h1:p/UMsR43ujA89BJY9duynAwIpvqEujIH/jFlfL7jWoI=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94 h1:0ngsPmuP6XIjiFRNFYlvKwSr5zff2v+uPHaffZ6/M4k=

@@ -1,7 +1,7 @@
 package amqpService
 
 import (
-	"github.com/sotomskir/mastermind-server/dto"
+	"github.com/deploji/deploji-server/dto"
 	"github.com/streadway/amqp"
 	"golang.org/x/net/context"
 	"log"

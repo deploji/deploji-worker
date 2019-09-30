@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/joho/godotenv"
-	"github.com/sotomskir/mastermind-worker/amqpService"
-	"github.com/sotomskir/mastermind-worker/handlers"
+	"github.com/deploji/deploji-worker/amqpService"
+	"github.com/deploji/deploji-worker/handlers"
 	"golang.org/x/net/context"
 	"os"
 )
