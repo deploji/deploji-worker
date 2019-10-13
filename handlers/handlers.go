@@ -99,6 +99,7 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
 	defer os.Remove(extraVarsFile.Name())
+	job.ExtraVariables = fmt.Sprintf("%s\ndeploji_worker: true\n", job.ExtraVariables)
 	_, err = extraVarsFile.WriteString(job.ExtraVariables)
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
@@ -107,10 +108,11 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	keyPath := fmt.Sprintf("../../keys/%d", job.Key.ID)
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
+	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Playbook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Application.Project.ID)
-	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
+	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
 	processPipes(cmd, jobLogs, job)
 
 	if err := cmd.Start(); err != nil {
@@ -151,15 +153,16 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
 	defer os.Remove(extraVarsFile.Name())
+	job.ExtraVariables = fmt.Sprintf("%s\ndeploji_worker: true\n", job.ExtraVariables)
 	_, err = extraVarsFile.WriteString(job.ExtraVariables)
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
-
+	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Project.ID)
-	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true"}
+	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
 	processPipes(cmd, jobLogs, job)
 
 	if err := cmd.Start(); err != nil {
