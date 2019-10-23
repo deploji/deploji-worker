@@ -13,5 +13,6 @@ ENV SSH_KNOWN_HOSTS=/root/known_hosts
 RUN touch known_hosts
 COPY --from=builder /go/bin/deploji-worker .
 COPY .env .
+COPY templates/*.html templates/
 VOLUME /root/storage
 CMD ["./deploji-worker"]
