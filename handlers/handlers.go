@@ -117,8 +117,8 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
 	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
-	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Playbook))
-	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@" + extraVarsFile.Name(), job.Playbook)
+	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@"+extraVarsFile.Name(), job.Playbook))
+	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@"+extraVarsFile.Name(), job.Playbook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Application.Project.ID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
 	processPipes(cmd, jobLogs, job)
@@ -173,8 +173,8 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
 	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
-	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook))
-	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@" + extraVarsFile.Name(), job.Playbook)
+	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook))
+	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook)
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Project.ID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
 	processPipes(cmd, jobLogs, job)
@@ -381,10 +381,10 @@ func clone(project *models.Project, jobLogs chan dto.Message, keys *ssh.PublicKe
 	return repo, err
 }
 
-func sendNotification(job *models.Job, notificationType templates.NotificationType) {
+func generateHtml(job *models.Job, title string, notificationType templates.NotificationType) string {
 	logs := models.GetJobLogs(job.ID)
-	html := templates.NotificationEmailTemplate{
-		Title:       fmt.Sprintf("Job #%d failed", job.ID),
+	return templates.NotificationEmailTemplate{
+		Title:       title,
 		Type:        notificationType,
 		JobType:     string(job.Type),
 		Inventory:   job.Inventory.Name,
@@ -395,24 +395,38 @@ func sendNotification(job *models.Job, notificationType templates.NotificationTy
 		JobStart:    job.StartedAt,
 		JobLogs:     logs,
 	}.Html()
+}
+
+func sendSuccessNotification(job *models.Job) {
+	title := fmt.Sprintf("Deploji job #%d %s", job.ID, "success")
 	projectNotifications := models.GetProjectNotifications(job.ProjectID)
 	applicationNotifications := models.GetApplicationNotifications(job.ApplicationID)
+	html := generateHtml(job, title, templates.NotificationTypeSuccess)
+	for _, n := range *projectNotifications {
+		if n.SuccessEnabled && n.NotificationChannel.Type == "email" {
+			mailService.Send(n.NotificationChannel.Recipients, title, html)
+		}
+	}
+	for _, n := range *applicationNotifications {
+		if n.SuccessEnabled && n.NotificationChannel.Type == "email" {
+			mailService.Send(n.NotificationChannel.Recipients, title, html)
+		}
+	}
+}
+
+func sendFailNotification(job *models.Job) {
+	title := fmt.Sprintf("Deploji job #%d %s", job.ID, "failed")
+	projectNotifications := models.GetProjectNotifications(job.ProjectID)
+	applicationNotifications := models.GetApplicationNotifications(job.ApplicationID)
+	html := generateHtml(job, title, templates.NotificationTypeFail)
 	for _, n := range *projectNotifications {
 		if n.FailEnabled && n.NotificationChannel.Type == "email" {
-			mailService.Send(n.NotificationChannel.Recipients, fmt.Sprintf("Failed job #%d", job.ID), html)
+			mailService.Send(n.NotificationChannel.Recipients, title, html)
 		}
 	}
 	for _, n := range *applicationNotifications {
 		if n.FailEnabled && n.NotificationChannel.Type == "email" {
-			mailService.Send(n.NotificationChannel.Recipients, fmt.Sprintf("Failed job #%d", job.ID), html)
+			mailService.Send(n.NotificationChannel.Recipients, title, html)
 		}
 	}
-}
-
-func sendSuccessNotification(job *models.Job) {
-	sendNotification(job, templates.NotificationTypeSuccess)
-}
-
-func sendFailNotification(job *models.Job) {
-	sendNotification(job, templates.NotificationTypeFail)
 }
