@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
+	"github.com/deploji/deploji-server/models"
 	"github.com/deploji/deploji-worker/amqpService"
 	"github.com/deploji/deploji-worker/handlers"
+	"github.com/joho/godotenv"
 	"golang.org/x/net/context"
 	"os"
 )
@@ -14,6 +15,7 @@ func main() {
 	if e != nil {
 		fmt.Print(e)
 	}
+	models.InitDatabase()
 	ctx, done := context.WithCancel(context.Background())
 
 	go func() {

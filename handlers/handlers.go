@@ -7,6 +7,8 @@ import (
 	"github.com/deploji/deploji-server/dto"
 	"github.com/deploji/deploji-server/models"
 	"github.com/deploji/deploji-worker/amqpService"
+	"github.com/deploji/deploji-worker/mailService"
+	"github.com/deploji/deploji-worker/templates"
 	"github.com/deploji/deploji-worker/utils"
 	ssh2 "golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
@@ -77,6 +79,12 @@ func processSCMPull(jobID uint, jobLogs chan dto.Message) {
 	if err := updateJobStatus(job, job.Status); err != nil {
 		return
 	}
+
+	if job.Status == models.StatusCompleted {
+		sendSuccessNotification(job)
+	} else {
+		sendFailNotification(job)
+	}
 }
 
 func processDeployment(jobID uint, jobLogs chan dto.Message) {
@@ -129,6 +137,12 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 		log.Printf("Cannot update job status: %s", err)
 		return
 	}
+
+	if job.Status == models.StatusCompleted {
+		sendSuccessNotification(job)
+	} else {
+		sendFailNotification(job)
+	}
 }
 
 func processJob(jobID uint, jobLogs chan dto.Message) {
@@ -178,6 +192,11 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	if err := updateJobStatus(job, job.Status); err != nil {
 		log.Printf("Cannot update job status: %s", err)
 		return
+	}
+	if job.Status == models.StatusCompleted {
+		sendSuccessNotification(job)
+	} else {
+		sendFailNotification(job)
 	}
 }
 
@@ -360,4 +379,40 @@ func clone(project *models.Project, jobLogs chan dto.Message, keys *ssh.PublicKe
 		return nil, err
 	}
 	return repo, err
+}
+
+func sendNotification(job *models.Job, notificationType templates.NotificationType) {
+	logs := models.GetJobLogs(job.ID)
+	html := templates.NotificationEmailTemplate{
+		Title:       fmt.Sprintf("Job #%d failed", job.ID),
+		Type:        notificationType,
+		JobType:     string(job.Type),
+		Inventory:   job.Inventory.Name,
+		Application: job.Application.Name,
+		Version:     job.Version,
+		User:        job.User.Name,
+		JobID:       fmt.Sprintf("#%d", job.ID),
+		JobStart:    job.StartedAt,
+		JobLogs:     logs,
+	}.Html()
+	projectNotifications := models.GetProjectNotifications(job.ProjectID)
+	applicationNotifications := models.GetApplicationNotifications(job.ApplicationID)
+	for _, n := range *projectNotifications {
+		if n.FailEnabled && n.NotificationChannel.Type == "email" {
+			mailService.Send(n.NotificationChannel.Recipients, fmt.Sprintf("Failed job #%d", job.ID), html)
+		}
+	}
+	for _, n := range *applicationNotifications {
+		if n.FailEnabled && n.NotificationChannel.Type == "email" {
+			mailService.Send(n.NotificationChannel.Recipients, fmt.Sprintf("Failed job #%d", job.ID), html)
+		}
+	}
+}
+
+func sendSuccessNotification(job *models.Job) {
+	sendNotification(job, templates.NotificationTypeSuccess)
+}
+
+func sendFailNotification(job *models.Job) {
+	sendNotification(job, templates.NotificationTypeFail)
 }

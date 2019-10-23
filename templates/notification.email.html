@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deploji</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link href="https://fonts.googleapis.com/css?family=Lobster+Two&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+        }
+
+        .header {
+            border-top: 5px solid #FF6D70;
+            width: 100%;
+        }
+
+        .brand {
+            padding: 10px;
+            width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        .brand-name {
+            font-size: 49px;
+            position: relative;
+            top: -7px;
+            color: #FF6D70;
+            font-family: 'Lobster Two', sans-serif;
+        }
+
+        .content {
+            margin-left: 10px;
+            margin-right: 10px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f3f3f3;
+            text-align: left;
+            padding: 18px 25px;
+            border: 1px solid #d1d1d1;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .panel {
+            border: 1px solid #d1d1d1;
+            border-radius: 3px;
+            padding: 0 15px;
+            background-color: #ffffff;
+            margin: 25px 0;
+        }
+
+        .panel-success {
+            background-color: #1bb463;
+            color: white;
+            margin-bottom: 25px;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .panel-success-light {
+            background-color: #edffe9;
+            color: #184A45;
+            margin-bottom: 25px;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .panel-warn {
+            background-color: #fdf4f6;
+            color: #d22852;
+            text-align: center;
+            font-size: 19px;
+        }
+
+        td {
+            border-top: 1px solid #d1d1d1;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.4;
+            font-weight: 300;
+            padding: 14px 0;
+            margin: 0
+        }
+
+        tbody > tr:first-child > td {
+            border-top: none;
+        }
+
+        td.label {
+            color: #8c8c8c;
+        }
+
+        .footer {
+            background-color: #ffffff;
+            width: 100%;
+            height: 15px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            padding: 25px 0;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #7a7a7a;
+            text-align: center;
+            border-bottom: 5px solid #FF6D70;
+        }
+
+        .footer > img {
+            display: block;
+            margin: 30px auto 50px;
+            height: 50px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .panel-warn {
+            background-color: #fdf4f6;
+            color: #d22852;
+            text-align: center;
+            font-size: 19px;
+        }
+
+        .panel-danger {
+            background-color: #d22f57;
+            border-color: #d22f57;
+            color: white;
+            margin-bottom: 25px;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .panel-title {
+            color: #5c5c5c;
+            background-color: #f8f8f8;
+            margin: 0 -14px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .panel-content, .panel-title {
+            padding: 14px 0;
+        }
+
+        .success {
+            color: #07c707 !important;
+        }
+
+        .error {
+            color: red !important;
+        }
+
+        .ansi-black {
+            color: white;
+            font-weight: bold;
+        }
+
+        .ansi-bright-black {
+            color: #d8d8d8;
+            font-weight: bold;
+        }
+
+        .ansi-red {
+            color: #ff3a36;
+        }
+
+        .ansi-bright-red {
+            color: #ffa9a7;
+        }
+
+        .ansi-green {
+            color: #1ea528;
+        }
+
+        .ansi-bright-green {
+            color: #88f392;
+        }
+
+        .ansi-yellow {
+            color: #fff431;
+        }
+
+        .ansi-bright-yellow {
+            color: #fff9b8;
+        }
+
+        .ansi-blue {
+            color: #636fff;
+        }
+
+        .ansi-bright-blue {
+            color: #a3adff;
+        }
+
+        .ansi-magenta {
+            color: #f248ff;
+        }
+
+        .ansi-bright-magenta {
+            color: #fd84ff;
+        }
+
+        .ansi-cyan {
+            color: #75ffee;
+        }
+
+        .ansi-bright-cyan {
+            color: #b1faff;
+        }
+
+        .ansi-white {
+            color: #292929;
+        }
+
+        .ansi-bright-white {
+            color: #000000;
+        }
+
+        .panel--dark {
+            background-color: #000000;
+            color: #f0f8ff;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="brand">
+        <span class="brand-name">Deploji</span>
+    </div>
+</div>
+<div class="content">
+    {{if eq .Type "success"}}
+    <div class="panel panel-success">
+        COMPLETED
+    </div>
+    <div class="panel panel-success-light">
+        {{else}}
+        <div class="panel panel-danger">
+            FAIL
+        </div>
+        <div class="panel panel-warn">
+            {{end}}
+            <div class="panel-content">
+                {{.Title}}
+            </div>
+        </div>
+        <div class="panel">
+            <table cellpadding="0" cellspacing="0" border="0">
+                <colgroup>
+                    <col width="170"/>
+                    <col width="500"/>
+                </colgroup>
+                <tr>
+                    <td class="label">Type</td>
+                    <td>{{.JobType}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Inventory</td>
+                    <td>{{.Inventory}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Application</td>
+                    <td>{{.Application}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Version</td>
+                    <td>{{.Version}}</td>
+                </tr>
+                <tr>
+                    <td class="label">User</td>
+                    <td>{{.User}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Id</td>
+                    <td>{{.JobID}}</td>
+                </tr>
+                <tr>
+                    <td class="label">Job start</td>
+                    <td>{{.JobStart}}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="panel panel--dark">
+            <div class="panel-content">
+                {{range $val := .JobLogs}}
+                    <div>{{$val.Message}}</div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <span>Sent by Deploji</span>
+    </div>
+</div>
+</body>
+</html>
