@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -399,34 +400,50 @@ func generateHtml(job *models.Job, title string, notificationType templates.Noti
 
 func sendSuccessNotification(job *models.Job) {
 	title := fmt.Sprintf("Deploji job #%d %s", job.ID, "success")
-	projectNotifications := models.GetProjectNotifications(job.ProjectID)
-	applicationNotifications := models.GetApplicationNotifications(job.ApplicationID)
 	html := generateHtml(job, title, templates.NotificationTypeSuccess)
-	for _, n := range *projectNotifications {
-		if n.SuccessEnabled && n.NotificationChannel.Type == "email" {
-			mailService.Send(n.NotificationChannel.Recipients, title, html)
-		}
-	}
-	for _, n := range *applicationNotifications {
-		if n.SuccessEnabled && n.NotificationChannel.Type == "email" {
-			mailService.Send(n.NotificationChannel.Recipients, title, html)
-		}
+	recipients := getRecipients(job, templates.NotificationTypeSuccess)
+	for _, email := range recipients {
+		mailService.Send(email, title, html)
 	}
 }
 
 func sendFailNotification(job *models.Job) {
 	title := fmt.Sprintf("Deploji job #%d %s", job.ID, "failed")
-	projectNotifications := models.GetProjectNotifications(job.ProjectID)
-	applicationNotifications := models.GetApplicationNotifications(job.ApplicationID)
 	html := generateHtml(job, title, templates.NotificationTypeFail)
-	for _, n := range *projectNotifications {
-		if n.FailEnabled && n.NotificationChannel.Type == "email" {
-			mailService.Send(n.NotificationChannel.Recipients, title, html)
+	recipients := getRecipients(job, templates.NotificationTypeFail)
+	for _, email := range recipients {
+		mailService.Send(email, title, html)
+	}
+}
+
+func getRecipients(job *models.Job, notificationType templates.NotificationType) map[string]string {
+	err, relatedNotifications := models.GetRelatedNotifications(*job)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	result := make(map[string]string, 0)
+	for _, n := range relatedNotifications {
+		if !notificationEnabled(notificationType, n) {
+			continue
+		}
+		if n.NotificationChannel.Type == "email" {
+			emails := strings.Split(n.NotificationChannel.Recipients, ",")
+			for _, email := range emails {
+				trimmedEmail := strings.Trim(email, " ")
+				result[trimmedEmail] = trimmedEmail
+			}
+		}
+		if n.NotificationChannel.Type == "user_email" {
+			user := models.GetUser(n.NotificationChannel.UserID)
+			trimmedEmail := strings.Trim(user.Email, " ")
+			result[trimmedEmail] = trimmedEmail
 		}
 	}
-	for _, n := range *applicationNotifications {
-		if n.FailEnabled && n.NotificationChannel.Type == "email" {
-			mailService.Send(n.NotificationChannel.Recipients, title, html)
-		}
-	}
+	return result
+}
+
+func notificationEnabled(notificationType templates.NotificationType, notification models.RelatedNotification) bool {
+	return (notificationType == templates.NotificationTypeFail && notification.FailEnabled) ||
+		(notificationType == templates.NotificationTypeSuccess && notification.SuccessEnabled)
 }
