@@ -10,6 +10,7 @@ import (
 	"github.com/deploji/deploji-worker/mailService"
 	"github.com/deploji/deploji-worker/templates"
 	"github.com/deploji/deploji-worker/utils"
+	"github.com/deploji/deploji-worker/webHookService"
 	ssh2 "golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 	"gopkg.in/src-d/go-git.v4"
@@ -82,9 +83,9 @@ func processSCMPull(jobID uint, jobLogs chan dto.Message) {
 	}
 
 	if job.Status == models.StatusCompleted {
-		sendSuccessNotification(job)
+		sendNotification(job, templates.NotificationTypeSuccess)
 	} else {
-		sendFailNotification(job)
+		sendNotification(job, templates.NotificationTypeFail)
 	}
 }
 
@@ -140,9 +141,9 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	}
 
 	if job.Status == models.StatusCompleted {
-		sendSuccessNotification(job)
+		sendNotification(job, templates.NotificationTypeSuccess)
 	} else {
-		sendFailNotification(job)
+		sendNotification(job, templates.NotificationTypeFail)
 	}
 }
 
@@ -195,9 +196,9 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 		return
 	}
 	if job.Status == models.StatusCompleted {
-		sendSuccessNotification(job)
+		sendNotification(job, templates.NotificationTypeSuccess)
 	} else {
-		sendFailNotification(job)
+		sendNotification(job, templates.NotificationTypeFail)
 	}
 }
 
@@ -398,31 +399,38 @@ func generateHtml(job *models.Job, title string, notificationType templates.Noti
 	}.Html()
 }
 
-func sendSuccessNotification(job *models.Job) {
-	title := fmt.Sprintf("Deploji job #%d %s", job.ID, "success")
-	html := generateHtml(job, title, templates.NotificationTypeSuccess)
-	recipients := getRecipients(job, templates.NotificationTypeSuccess)
-	for _, email := range recipients {
+func generateText(job *models.Job, s string, notificationType templates.NotificationType) string {
+	return fmt.Sprintf(
+		"status: %s\nId: %d\ntype: %s\napplication: %s\ninventory: %s\nversion: %s",
+		notificationType,
+		job.ID,
+		job.Type,
+		job.Application.Name,
+		job.Inventory.Name,
+		job.Version)
+}
+
+func sendNotification(job *models.Job, notificationType templates.NotificationType) {
+	title := fmt.Sprintf("Deploji job #%d %s", job.ID, notificationType)
+	html := generateHtml(job, title, notificationType)
+	text := generateText(job, title, notificationType)
+	emails, webHooks := getRecipients(job, notificationType)
+	for _, email := range emails {
 		mailService.Send(email, title, html)
+	}
+	for _, webHook := range webHooks {
+		webHookService.Send(webHook, title, text)
 	}
 }
 
-func sendFailNotification(job *models.Job) {
-	title := fmt.Sprintf("Deploji job #%d %s", job.ID, "failed")
-	html := generateHtml(job, title, templates.NotificationTypeFail)
-	recipients := getRecipients(job, templates.NotificationTypeFail)
-	for _, email := range recipients {
-		mailService.Send(email, title, html)
-	}
-}
-
-func getRecipients(job *models.Job, notificationType templates.NotificationType) map[string]string {
+func getRecipients(job *models.Job, notificationType templates.NotificationType) (emails map[string]string, webHooks map[string]string) {
 	err, relatedNotifications := models.GetRelatedNotifications(*job)
 	if err != nil {
 		log.Println(err)
-		return nil
+		return nil, nil
 	}
-	result := make(map[string]string, 0)
+	emailMap := make(map[string]string, 0)
+	webHookMap := make(map[string]string, 0)
 	for _, n := range relatedNotifications {
 		if !notificationEnabled(notificationType, n) {
 			continue
@@ -431,16 +439,19 @@ func getRecipients(job *models.Job, notificationType templates.NotificationType)
 			emails := strings.Split(n.NotificationChannel.Recipients, ",")
 			for _, email := range emails {
 				trimmedEmail := strings.Trim(email, " ")
-				result[trimmedEmail] = trimmedEmail
+				emailMap[trimmedEmail] = trimmedEmail
 			}
 		}
 		if n.NotificationChannel.Type == "user_email" {
 			user := models.GetUser(n.NotificationChannel.UserID)
 			trimmedEmail := strings.Trim(user.Email, " ")
-			result[trimmedEmail] = trimmedEmail
+			emailMap[trimmedEmail] = trimmedEmail
+		}
+		if n.NotificationChannel.Type == "webhook" {
+			webHookMap[n.NotificationChannel.WebhookURL] = n.NotificationChannel.WebhookURL
 		}
 	}
-	return result
+	return emailMap, webHookMap
 }
 
 func notificationEnabled(notificationType templates.NotificationType, notification models.RelatedNotification) bool {
