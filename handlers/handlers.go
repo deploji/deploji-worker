@@ -83,9 +83,9 @@ func processSCMPull(jobID uint, jobLogs chan dto.Message) {
 	}
 
 	if job.Status == models.StatusCompleted {
-		sendNotification(job, templates.NotificationTypeSuccess)
+		sendNotification(job, templates.NotificationTypeSuccess, jobLogs)
 	} else {
-		sendNotification(job, templates.NotificationTypeFail)
+		sendNotification(job, templates.NotificationTypeFail, jobLogs)
 	}
 }
 
@@ -141,9 +141,9 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	}
 
 	if job.Status == models.StatusCompleted {
-		sendNotification(job, templates.NotificationTypeSuccess)
+		sendNotification(job, templates.NotificationTypeSuccess, jobLogs)
 	} else {
-		sendNotification(job, templates.NotificationTypeFail)
+		sendNotification(job, templates.NotificationTypeFail, jobLogs)
 	}
 }
 
@@ -196,9 +196,9 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 		return
 	}
 	if job.Status == models.StatusCompleted {
-		sendNotification(job, templates.NotificationTypeSuccess)
+		sendNotification(job, templates.NotificationTypeSuccess, jobLogs)
 	} else {
-		sendNotification(job, templates.NotificationTypeFail)
+		sendNotification(job, templates.NotificationTypeFail, jobLogs)
 	}
 }
 
@@ -399,7 +399,7 @@ func generateHtml(job *models.Job, title string, notificationType templates.Noti
 	}.Html()
 }
 
-func generateText(job *models.Job, s string, notificationType templates.NotificationType) string {
+func generateText(job *models.Job, notificationType templates.NotificationType) string {
 	return fmt.Sprintf(
 		"status: %s\nId: %d\ntype: %s\napplication: %s\ninventory: %s\nversion: %s",
 		notificationType,
@@ -410,16 +410,20 @@ func generateText(job *models.Job, s string, notificationType templates.Notifica
 		job.Version)
 }
 
-func sendNotification(job *models.Job, notificationType templates.NotificationType) {
+func sendNotification(job *models.Job, notificationType templates.NotificationType, jobLogs chan dto.Message) {
 	title := fmt.Sprintf("Deploji job #%d %s", job.ID, notificationType)
 	html := generateHtml(job, title, notificationType)
-	text := generateText(job, title, notificationType)
+	text := generateText(job, notificationType)
 	emails, webHooks := getRecipients(job, notificationType)
 	for _, email := range emails {
-		mailService.Send(email, title, html)
+		if err := mailService.Send(email, title, html); err != nil {
+			saveJobLog(jobLogs, job, fmt.Sprintf("Error sending email: %s", err))
+		}
 	}
 	for _, webHook := range webHooks {
-		webHookService.Send(webHook, title, text)
+		if err := webHookService.Send(webHook, title, text); err != nil {
+			saveJobLog(jobLogs, job, fmt.Sprintf("Error sending webhook: %s", err))
+		}
 	}
 }
 

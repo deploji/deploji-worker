@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func Send(recipients string, subject string, body string) {
+func Send(recipients string, subject string, body string) error {
 	host := models.GetSettingValue("SMTP", "host", "localhost")
 	port, err := strconv.ParseInt(models.GetSettingValue("SMTP", "port", "1025"), 10, 16)
 	if err != nil {
@@ -31,6 +31,8 @@ func Send(recipients string, subject string, body string) {
 		d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 		if err := d.DialAndSend(m); err != nil {
 			log.Println(err)
+			return err
 		}
 	}
+	return nil
 }
