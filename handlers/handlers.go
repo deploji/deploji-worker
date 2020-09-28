@@ -121,8 +121,9 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@"+extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@"+extraVarsFile.Name(), job.Playbook)
-	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.Project.ID)
+	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.ProjectID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
+	saveJobLog(jobLogs, job, fmt.Sprintf("cmd.Dir %s", cmd.Dir))
 	processPipes(cmd, jobLogs, job)
 
 	if err := cmd.Start(); err != nil {
@@ -177,8 +178,9 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook)
-	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Project.ID)
+	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.ProjectID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
+	saveJobLog(jobLogs, job, fmt.Sprintf("cmd.Dir %s", cmd.Dir))
 	processPipes(cmd, jobLogs, job)
 
 	if err := cmd.Start(); err != nil {
@@ -316,6 +318,9 @@ func getProject(job *models.Job) *models.Project {
 	}
 	if job.Application.ProjectID != 0 {
 		projectID = job.Application.ProjectID
+	}
+	if job.Inventory.ProjectID != 0 {
+		projectID = job.Inventory.ProjectID
 	}
 	return models.GetProject(projectID)
 }

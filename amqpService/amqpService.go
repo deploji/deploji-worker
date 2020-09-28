@@ -143,7 +143,7 @@ func Subscribe(sessions chan chan session, messages chan<- dto.Message, queueNam
 			return
 		}
 
-		deliveries, err := sub.Consume(queueName, "", false, true, false, false, nil)
+		deliveries, err := sub.Consume(queueName, "", false, false, false, false, nil)
 		if err != nil {
 			log.Printf("cannot consume from: %s, %s", queueName, err)
 			return
