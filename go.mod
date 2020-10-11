@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/containerd/containerd v1.2.8 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190820223206-44cdfe8d8ba9 // indirect
-	github.com/deploji/deploji-server v0.0.0-20191101190938-da9320d42d10
+	github.com/deploji/deploji-server v0.0.0-20201011224230-f563891b4e34
 	github.com/golang-migrate/migrate/v4 v4.6.1 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/joho/godotenv v1.3.0

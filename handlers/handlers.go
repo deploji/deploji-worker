@@ -101,9 +101,7 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
 	}
-	if err := utils.WriteKey(job.Key.ID, string(job.Key.Key)); err != nil {
-		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
-	}
+	writeKeys(job, jobLogs)
 	extraVarsFile, err := ioutil.TempFile("/tmp/", "extraVars")
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
@@ -115,12 +113,16 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
 
-	keyPath := fmt.Sprintf("../../keys/%d", job.Key.ID)
+	keyPath := fmt.Sprintf("../../keys/%d", job.KeyID)
+	vaultKeyPath := fmt.Sprintf("../../keys/%d", job.VaultKeyID)
 	version := fmt.Sprintf("version=%s", job.Version)
 	app := fmt.Sprintf("app=%s", job.Application.AnsibleName)
 	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
-	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@"+extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", app, "-e", version, "-e", "@"+extraVarsFile.Name(), job.Playbook)
+	if job.VaultKeyID != 0 {
+		cmd.Args = append(cmd.Args, "--vault-id", vaultKeyPath)
+	}
+	saveJobLog(jobLogs, job, strings.Join(cmd.Args, " "))
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.ProjectID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
 	saveJobLog(jobLogs, job, fmt.Sprintf("cmd.Dir %s", cmd.Dir))
@@ -160,11 +162,10 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	if err := synchronizeProjectRepo(job, jobLogs); err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot synchronize project: %s", err))
 	}
-	if err := utils.WriteKey(job.Key.ID, string(job.Key.Key)); err != nil {
-		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
-	}
 
-	keyPath := fmt.Sprintf("../../keys/%d", job.Key.ID)
+	writeKeys(job, jobLogs)
+	keyPath := fmt.Sprintf("../../keys/%d", job.KeyID)
+	vaultKeyPath := fmt.Sprintf("../../keys/%d", job.VaultKeyID)
 	extraVarsFile, err := ioutil.TempFile("/tmp/", "extraVars")
 	if err != nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
@@ -176,8 +177,13 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot create temp file: %s", err))
 	}
 	saveJobLog(jobLogs, job, fmt.Sprintf("extra vars: \n%s", job.ExtraVariables))
-	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook))
 	cmd := exec.Command("ansible-playbook", "--private-key", keyPath, "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook)
+	if job.VaultKeyID != 0 {
+		cmd.Args = append(cmd.Args, "--vault-id", vaultKeyPath)
+	}
+
+	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s", strings.Join(cmd.Args, " ")))
+	//saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook))
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.ProjectID)
 	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
 	saveJobLog(jobLogs, job, fmt.Sprintf("cmd.Dir %s", cmd.Dir))
@@ -201,6 +207,17 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 		sendNotification(job, templates.NotificationTypeSuccess, jobLogs)
 	} else {
 		sendNotification(job, templates.NotificationTypeFail, jobLogs)
+	}
+}
+
+func writeKeys(job *models.Job, jobLogs chan dto.Message) {
+	if err := utils.WriteKey(job.Key.ID, string(job.Key.Key)); err != nil {
+		saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
+	}
+	if job.VaultKeyID != 0 {
+		if err := utils.WriteKey(job.VaultKeyID, string(job.VaultKey.Key)); err != nil {
+			saveJobLog(jobLogs, job, fmt.Sprintf("Cannot write key: %s", err))
+		}
 	}
 }
 
