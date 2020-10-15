@@ -11,6 +11,7 @@ import (
 type NotificationType string
 
 const (
+	NotificationTypeStart   NotificationType = "start"
 	NotificationTypeSuccess NotificationType = "success"
 	NotificationTypeFail    NotificationType = "fail"
 )
@@ -39,4 +40,3 @@ func (t NotificationEmailTemplate) Html() string {
 	}
 	return buffer.String()
 }
-

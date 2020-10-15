@@ -20,10 +20,11 @@ func WriteKey(id uint, content string) error {
 		log.Printf("Error creating directory: %s", err)
 		return err
 	}
-	if err := ioutil.WriteFile(fmt.Sprintf("storage/keys/%d", id), []byte(content), 0700); err != nil {
+	if err := ioutil.WriteFile(fmt.Sprintf("storage/keys/%d", id), []byte(content), 0600); err != nil {
 		log.Printf("Error saving key file: %s", err)
 		return err
 	}
+	os.Chmod(fmt.Sprintf("storage/keys/%d", id), 0600)
 	return nil
 }
 

@@ -4,20 +4,13 @@ go 1.12
 
 require (
 	cloud.google.com/go v0.44.3 // indirect
-	github.com/Microsoft/go-winio v0.4.14 // indirect
-	github.com/containerd/containerd v1.2.8 // indirect
-	github.com/denisenkom/go-mssqldb v0.0.0-20190820223206-44cdfe8d8ba9 // indirect
-	github.com/deploji/deploji-server v0.0.0-20201011224230-f563891b4e34
-	github.com/golang-migrate/migrate/v4 v4.6.1 // indirect
-	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/SherClockHolmes/webpush-go v1.1.2
+	github.com/deploji/deploji-server v0.0.0-20201013235003-4e8a194e4fce
 	github.com/joho/godotenv v1.3.0
-	github.com/streadway/amqp v0.0.0-20190815230801-eade30b20f1d
-	github.com/stretchr/testify v1.4.0 // indirect
-	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
-	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
-	golang.org/x/sys v0.0.0-20190825160603-fb81701db80f // indirect
-	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
-	google.golang.org/grpc v1.23.0 // indirect
+	github.com/sirupsen/logrus v1.4.2
+	github.com/streadway/amqp v1.0.0
+	golang.org/x/crypto v0.0.0-20201012173705-84dcc777aaee
+	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gopkg.in/src-d/go-git.v4 v4.13.1

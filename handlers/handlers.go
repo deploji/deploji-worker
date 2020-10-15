@@ -11,6 +11,8 @@ import (
 	"github.com/deploji/deploji-worker/templates"
 	"github.com/deploji/deploji-worker/utils"
 	"github.com/deploji/deploji-worker/webHookService"
+	"github.com/deploji/deploji-worker/webPushService"
+	"github.com/sirupsen/logrus"
 	ssh2 "golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 	"gopkg.in/src-d/go-git.v4"
@@ -66,6 +68,7 @@ func failJob(jobID uint, jobLogs chan dto.Message, message string) {
 
 func processSCMPull(jobID uint, jobLogs chan dto.Message) {
 	job := models.GetJob(jobID)
+	sendNotification(job, templates.NotificationTypeStart, jobLogs)
 	if job == nil {
 		log.Printf("Job with ID: %d not found", jobID)
 		return
@@ -91,6 +94,7 @@ func processSCMPull(jobID uint, jobLogs chan dto.Message) {
 
 func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	job := models.GetJob(jobID)
+	sendNotification(job, templates.NotificationTypeStart, jobLogs)
 	if job == nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Deployment with ID: %d not found", jobID))
 		return
@@ -152,6 +156,7 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 
 func processJob(jobID uint, jobLogs chan dto.Message) {
 	job := models.GetJob(jobID)
+	sendNotification(job, templates.NotificationTypeStart, jobLogs)
 	if job == nil {
 		saveJobLog(jobLogs, job, fmt.Sprintf("Deployment with ID: %d not found", jobID))
 		return
@@ -436,7 +441,13 @@ func sendNotification(job *models.Job, notificationType templates.NotificationTy
 	title := fmt.Sprintf("Deploji job #%d %s", job.ID, notificationType)
 	html := generateHtml(job, title, notificationType)
 	text := generateText(job, notificationType)
-	emails, webHooks := getRecipients(job, notificationType)
+	emails, webHooks, webPushes := getRecipients(job, notificationType)
+	logrus.Infof( "webpushes: %v\n", webPushes)
+	for _, webPush := range webPushes {
+		if err := webPushService.Send(webPush, title, text); err != nil {
+			saveJobLog(jobLogs, job, fmt.Sprintf("Error sending webpush: %s", err))
+		}
+	}
 	for _, email := range emails {
 		if err := mailService.Send(email, title, html); err != nil {
 			saveJobLog(jobLogs, job, fmt.Sprintf("Error sending email: %s", err))
@@ -449,14 +460,15 @@ func sendNotification(job *models.Job, notificationType templates.NotificationTy
 	}
 }
 
-func getRecipients(job *models.Job, notificationType templates.NotificationType) (emails map[string]string, webHooks map[string]string) {
+func getRecipients(job *models.Job, notificationType templates.NotificationType) (emails map[string]string, webHooks map[string]string, webPushes []string) {
 	err, relatedNotifications := models.GetRelatedNotifications(*job)
 	if err != nil {
 		log.Println(err)
-		return nil, nil
+		return nil, nil, nil
 	}
 	emailMap := make(map[string]string, 0)
 	webHookMap := make(map[string]string, 0)
+	webPushArray := make([]string, 0)
 	for _, n := range relatedNotifications {
 		if !notificationEnabled(notificationType, n) {
 			continue
@@ -476,11 +488,18 @@ func getRecipients(job *models.Job, notificationType templates.NotificationType)
 		if n.NotificationChannel.Type == "webhook" {
 			webHookMap[n.NotificationChannel.WebhookURL] = n.NotificationChannel.WebhookURL
 		}
+		if n.NotificationChannel.Type == "webpush" {
+			pushNotifications := models.FindByUserID(n.NotificationChannel.UserID)
+			for _, push := range pushNotifications {
+				webPushArray = append(webPushArray, push.Sub)
+			}
+		}
 	}
-	return emailMap, webHookMap
+	return emailMap, webHookMap, webPushArray
 }
 
 func notificationEnabled(notificationType templates.NotificationType, notification models.RelatedNotification) bool {
 	return (notificationType == templates.NotificationTypeFail && notification.FailEnabled) ||
-		(notificationType == templates.NotificationTypeSuccess && notification.SuccessEnabled)
+		(notificationType == templates.NotificationTypeSuccess && notification.SuccessEnabled) ||
+		(notificationType == templates.NotificationTypeStart && notification.StartEnabled)
 }
