@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/deploji-worker .
 
 FROM alpine:latest
-RUN apk update && apk --no-cache add ca-certificates openssh ansible
+RUN apk update && apk --no-cache add ca-certificates openssh ansible py3-lxml tar curl
 WORKDIR /root/
 ENV SSH_KNOWN_HOSTS=/root/known_hosts
 RUN touch known_hosts
