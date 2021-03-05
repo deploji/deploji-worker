@@ -128,7 +128,7 @@ func processDeployment(jobID uint, jobLogs chan dto.Message) {
 	}
 	saveJobLog(jobLogs, job, strings.Join(cmd.Args, " "))
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.ProjectID)
-	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
+	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
 	saveJobLog(jobLogs, job, fmt.Sprintf("cmd.Dir %s", cmd.Dir))
 	processPipes(cmd, jobLogs, job)
 
@@ -190,7 +190,7 @@ func processJob(jobID uint, jobLogs chan dto.Message) {
 	saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s", strings.Join(cmd.Args, " ")))
 	//saveJobLog(jobLogs, job, fmt.Sprintf("ansible-playbook %s %s %s %s %s", "-i", job.Inventory.SourceFile, "-e", "@"+extraVarsFile.Name(), job.Playbook))
 	cmd.Dir = fmt.Sprintf("storage/repositories/%d", job.Inventory.ProjectID)
-	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False"}
+	cmd.Env = []string{"ANSIBLE_FORCE_COLOR=true", "ANSIBLE_HOST_KEY_CHECKING=False", "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
 	saveJobLog(jobLogs, job, fmt.Sprintf("cmd.Dir %s", cmd.Dir))
 	processPipes(cmd, jobLogs, job)
 
